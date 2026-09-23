@@ -393,7 +393,7 @@ class HotelSearchAgent(PilaBaseAgent):
 
 # Register with the orchestrator
 agent = HotelSearchAgent()
-agent.register(base_url="https://pila-orchestrator.fly.dev")
+agent.register(base_url="https://your-registry.example.com")
 ```
 
 See `docs/sdk-guide.md` for full SDK documentation.
@@ -605,7 +605,7 @@ Developers earn revenue when their agents execute tasks.
 pnpm agent:stats my-agent
 
 # Via API
-curl https://pila-orchestrator.fly.dev/billing/earnings/<developer-account-id>
+curl https://your-registry.example.com/billing/earnings/<developer-account-id>
 ```
 
 Returns:

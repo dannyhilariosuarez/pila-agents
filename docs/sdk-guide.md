@@ -64,7 +64,7 @@ client = PilaClient(base_url="http://localhost:3000")
 
 # With API key authentication
 client = PilaClient(
-    base_url="https://pila-orchestrator.fly.dev",
+    base_url="https://your-registry.example.com",
     api_key="your-api-key"
 )
 ```
@@ -289,7 +289,7 @@ agent = WeatherAgent()
 result = agent.register(base_url="http://localhost:3000")
 
 # Register against production
-result = agent.register(base_url="https://pila-orchestrator.fly.dev")
+result = agent.register(base_url="https://your-registry.example.com")
 ```
 
 This calls `POST /developers/register` with the agent's manifest. The agent is immediately available in the registry, though it will use the inline Claude fallback for execution (marked "AI Generated") unless you also expose a remote HTTP endpoint.

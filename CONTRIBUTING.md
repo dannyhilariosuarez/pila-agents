@@ -1,178 +1,76 @@
-# Contributing to pila
+# Contributing
+
+The most useful contribution is a new agent or tap. Protocol changes are welcome too, but they move slowly by design — other people's agents depend on the contract.
 
 ## Setup
 
 ```bash
-# Prerequisites: Node.js >= 22, pnpm 9.15+
-git clone <repo-url> && cd pila
+# Prerequisites: Node.js >= 20, pnpm 9.15+
+git clone https://github.com/dannyhilariosuarez/pila-agents && cd pila-agents
 pnpm install
-cp .env.example .env   # Fill in SUPABASE_URL, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY
-pnpm dev               # Starts orchestrator, agent, and web dashboard
+pnpm test          # builds the workspace, then runs the suite
 ```
 
-## Architecture
+No database, no API keys, and no running registry are needed to build or test this repository. Individual agents need their own third-party keys to *run* — each one ships a `.env.example` listing which.
 
-pila is a TypeScript monorepo (pnpm workspaces + Turborepo):
+For the Python SDK:
+
+```bash
+cd sdks/python
+pip install -e ".[dev]"
+pytest -q
+```
+
+## Layout
 
 ```
-apps/
-  orchestrator/   Hono API — decomposition, agent routing, execution, SSE
-  agent/          Slack Bolt app — DM handling, intent classification
-  web/            React dashboard — live agent feed, result cards
-
 packages/
-  protocol/       Agent interface (PilaBaseAgent, manifest types)
-  registry/       Agent scoring and ranking
-  shared/         Database types, status enums, constants
-  cli/            CLI for agent management
+  protocol/   Base class, manifest and tap types, HTTP registration
+  cli/        Register, test, inspect, and deactivate agents
+  shared/     Lifecycle constants and the revenue-split calculation
+sdks/python/  The same protocol for Python
+agents/       Nine reference agents
+taps/         Example tap manifests
+docs/         Protocol spec, OpenAPI spec, guides, ADRs
 ```
 
-### Key data flow
+The orchestrator that hires these agents lives in a separate, source-available repository. Nothing here talks to a database; registration goes over HTTP with a developer API key.
 
-1. User sends task via Slack DM or web chat
-2. Orchestrator decomposes into sub-tasks (Claude)
-3. Registry matches sub-tasks to agents (Claude Haiku batch call)
-4. Agents execute concurrently with timeout + concurrency limit
-5. Results stream via SSE to Slack thread and web dashboard
+## Adding an agent
 
-## Agent Development
+1. Copy the closest existing agent in `agents/` — `flight-search` for an API-backed agent, `github-issues` for a token-authenticated one.
+2. Extend `PilaBaseAgent` and implement `run()` and `healthCheck()`. Return a structured `PilaOutputSchema` rather than throwing; `execute()` wraps `run()` with timing and error handling.
+3. Declare every third-party key in `.env.example`. **Never commit a real `.env`.**
+4. Write tests. `manifest.test.ts` checks the manifest is well-formed; `index.test.ts` covers behaviour with the network mocked.
 
-Every agent implements the `PilaAgent` interface from `@pila/protocol`:
+## Adding a tap
 
-```typescript
-import { PilaBaseAgent } from "@pila/protocol";
-import type {
-  PilaAgentManifest,
-  PilaInputSchema,
-  PilaOutputSchema,
-} from "@pila/protocol";
+A tap is a JSON manifest with no code to host. Start from `taps/tap.example.json` and validate it before submitting:
 
-class MyAgent extends PilaBaseAgent {
-  manifest: PilaAgentManifest = {
-    id: "my-agent",
-    name: "My Agent",
-    version: "1.0.0",
-    author: "you",
-    description: "What this agent does",
-    category: "Research",
-    capabilities: ["keyword1", "keyword2"],
-    pricing: { perExecution: 0, currency: "USD" },
-    tags: ["tag1"],
-    inputSchema: { task: "", subTask: "" },
-    outputSchema: {
-      success: true,
-      data: {},
-      summary: "",
-      confidence: 0,
-      executionTime: 0,
-    },
-  };
-
-  async run(input: PilaInputSchema): Promise<PilaOutputSchema> {
-    // Your implementation — call real APIs, process data, etc.
-    return {
-      success: true,
-      data: { result: "..." },
-      summary: "What happened",
-      confidence: 1.0, // 1.0 for real data, 0.5 for AI-generated
-      executionTime: 0, // auto-filled by base class
-    };
-  }
-}
+```ts
+import { validateTapJson } from "@pila/protocol";
 ```
 
-Register via CLI:
+## Tests
+
+Write the test first and watch it fail. A test that passes the moment you write it has proved nothing — you never saw it catch the bug.
+
+Mock the network, never the thing you are testing. Agents must pass with no credentials present, so CI can run them.
 
 ```bash
-pnpm agent:register agents/my-agent
-pnpm agent:test my-agent
+pnpm test              # everything
+pnpm vitest run <path> # one file
+pnpm lint
+pnpm type-check
 ```
 
-See [`docs/agent-development-guide.md`](./docs/agent-development-guide.md) for the full guide.
+## Pull requests
 
-## Testing
+- One concern per PR.
+- Say what you verified and paste the output. "Tests pass" without the run is not evidence.
+- Explain *why* in the commit message; the diff already shows what.
+- Protocol changes need a note on what breaks for existing agents.
 
-```bash
-pnpm test              # Run all unit tests (vitest, 792 tests across 80 files)
-pnpm test:coverage     # Run with coverage thresholds enforced
-pnpm test:smoke        # E2E smoke test against running orchestrator
-pnpm test:load         # k6 load testing
-```
+## License
 
-Tests live alongside source files (`*.test.ts`). Key test areas:
-
-- `packages/registry/src/index.test.ts` — scoring and ranking
-- `packages/protocol/src/base.test.ts` — base agent execution
-- `apps/orchestrator/src/lib/decompose.test.ts` — JSON parsing
-- `apps/orchestrator/src/lib/claudeFallback.test.ts` — fallback parsing
-
-### Coverage thresholds
-
-Coverage is enforced in CI via `vitest.config.ts`:
-
-| Metric     | Threshold |
-| ---------- | --------- |
-| Lines      | 70%       |
-| Branches   | 60%       |
-| Functions  | 65%       |
-| Statements | 70%       |
-
-See [`docs/testing-guide.md`](./docs/testing-guide.md) for full testing strategy.
-
-## Code Style
-
-- TypeScript strict mode, ES2024 target, `noUncheckedIndexedAccess` enabled
-- ESLint with strict rules (`no-explicit-any: error`, `no-non-null-assertion: error`, `consistent-type-imports: error`)
-- Prettier for formatting (2-space indent, double quotes, trailing commas)
-- Structured logging via pino (never `console.log` in orchestrator or web app)
-- Zod validation on all API inputs and environment variables
-- All routing decisions made by Claude (zero hardcoded keyword lists)
-
-### Pre-commit hooks
-
-Husky runs lint-staged on every commit:
-
-- `*.{ts,tsx}` — `eslint --fix` + `prettier --write`
-- `*.{json,md,yaml,yml}` — `prettier --write`
-
-### Environment variables
-
-All orchestrator env vars are validated at startup via a centralized Zod schema in `apps/orchestrator/src/lib/env.ts`. Add new variables there first, then use the typed `env` object instead of `process.env`.
-
-## CI Pipeline
-
-The CI workflow (`.github/workflows/ci.yml`) runs on every push and PR to `main`:
-
-1. **Lint** — `pnpm lint` (ESLint with strict rules)
-2. **Type check** — `tsc --noEmit` (full TypeScript validation)
-3. **Build** — `pnpm build` (Turborepo parallel build)
-4. **Test** — `pnpm test:coverage` (vitest with coverage thresholds)
-5. **Smoke test** — `pnpm test:smoke` (allowed to fail without server)
-
-## Commit Messages
-
-Follow conventional commits:
-
-```
-feat(scope): description
-fix(scope): description
-test: description
-docs: description
-refactor(scope): description
-chore(scope): description
-```
-
-## Pull Requests
-
-- Branch from `main`, PR back to `main`
-- All CI checks must pass
-- CODEOWNERS will auto-assign reviewers based on file paths
-- Keep PRs focused — one feature or fix per PR
-
-## Key Documentation
-
-- [`docs/api-reference.md`](./docs/api-reference.md) — Full API docs
-- [`docs/architecture-diagram.md`](./docs/architecture-diagram.md) — System architecture
-- [`docs/deployment-guide.md`](./docs/deployment-guide.md) — Production deployment
-- [`docs/protocol-spec.md`](./docs/protocol-spec.md) — Agent protocol spec
-- [`docs/troubleshooting.md`](./docs/troubleshooting.md) — Common issues
+Contributions are licensed under Apache-2.0, the same as the rest of this repository. By opening a pull request you confirm you have the right to submit the work under that license.

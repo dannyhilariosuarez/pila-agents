@@ -1,73 +1,56 @@
 # Security Policy
 
-## Supported Versions
+## Reporting a vulnerability
 
-| Version | Supported |
-| ------- | --------- |
-| 0.x     | Yes       |
+**Do not open a public issue for a security vulnerability.**
 
-## Reporting a Vulnerability
+Report it through GitHub's private vulnerability reporting, which is enabled on this repository:
 
-If you discover a security vulnerability in Pila, please report it responsibly.
+[**Report a vulnerability**](https://github.com/dannyhilariosuarez/pila-agents/security/advisories/new)
 
-**Do NOT open a public GitHub issue for security vulnerabilities.**
+The report stays private between you and the maintainers until a fix is published. Please include:
 
-Instead, please email **security@pila.ai** with:
+1. What the vulnerability is
+2. Steps to reproduce it
+3. What an attacker could achieve
+4. A suggested fix, if you have one
 
-1. A description of the vulnerability
-2. Steps to reproduce the issue
-3. The potential impact
-4. Any suggested fixes (optional)
+## Response
 
-## Response Timeline
+| Stage | Target |
+| --- | --- |
+| Acknowledgement | 48 hours |
+| Initial assessment | 5 business days |
+| Fix for a critical issue | 30 days |
 
-- **Acknowledgment**: Within 48 hours
-- **Initial assessment**: Within 5 business days
-- **Resolution target**: Within 30 days for critical issues
+This is a small project and those are targets, not guarantees. If you have had no acknowledgement after a week, it is reasonable to assume the report was missed.
 
 ## Scope
 
-This policy applies to:
+In scope — everything in this repository:
 
-- The Pila orchestrator API (`apps/orchestrator`)
-- The Pila web application (`apps/web`)
-- Agent protocol and shared packages (`packages/*`)
-- Official agent implementations (`agents/*`)
+- `packages/protocol` — the base class, tap schema, and registration client
+- `packages/cli` and `packages/shared`
+- `sdks/python`
+- `agents/*` — the reference agents
 
-## Out of Scope
+Particularly interesting: anything that causes credentials to leak out of an agent, and anything in `validateTapJson` or `ManifestExecutor` that lets a malicious tap manifest reach somewhere it should not.
 
-- Third-party dependencies (report these to the respective maintainers)
-- Social engineering attacks
-- Denial of service attacks
+Out of scope:
 
-## Security Headers
+- The hosted registry and orchestrator. They live in a separate repository; report those to the same address and say which component.
+- Third-party dependencies — report upstream.
+- Denial of service and social engineering.
 
-The orchestrator applies the following security headers to all responses:
+## Notes for agent authors
 
-| Header                      | Value                                                                                                                                                                                                              | Purpose                                     |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
-| `X-Content-Type-Options`    | `nosniff`                                                                                                                                                                                                          | Prevents MIME-type sniffing                 |
-| `X-Frame-Options`           | `DENY`                                                                                                                                                                                                             | Prevents clickjacking via iframes           |
-| `X-XSS-Protection`          | `1; mode=block`                                                                                                                                                                                                    | Legacy XSS filter for older browsers        |
-| `Referrer-Policy`           | `strict-origin-when-cross-origin`                                                                                                                                                                                  | Limits referrer leakage                     |
-| `Permissions-Policy`        | `camera=(), microphone=(), geolocation=()`                                                                                                                                                                         | Disables unnecessary browser APIs           |
-| `Content-Security-Policy`   | `default-src 'self'; connect-src 'self' <WEB_URL>; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'` | Mitigates XSS, code injection, clickjacking |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains`                                                                                                                                                                              | Enforces HTTPS for 1 year                   |
+Agents hold third-party API keys. Two rules carry most of the weight:
 
-### Webhook Verification
+- **Never commit a `.env`.** They are gitignored here, which also means `cp -r` will happily copy one somewhere it does not belong.
+- **Never log a key**, including inside an error message. `getApiKey()` throws with the variable's *name*, never its value — keep it that way.
 
-When `WEBHOOK_SECRET` is configured, the billing webhook endpoint (`POST /billing/webhook`) verifies incoming payloads using HMAC-SHA256 with constant-time comparison (`timingSafeEqual`). This prevents request forgery and replay attacks.
-
-CORS is restricted to the configured `WEB_URL` origin.
-
-## Rate Limiting
-
-All API endpoints are rate-limited using a token-bucket algorithm:
-
-- **Default**: 60 requests per minute per IP
-- **Configurable** via `RATE_LIMIT_MAX_TOKENS` and `RATE_LIMIT_REFILL_RATE` env vars
-- Returns `429 Too Many Requests` with `Retry-After` header when exceeded
+Registration uses a developer API key over HTTPS. Nothing in this repository should ever need a database credential; if you find something that does, that is a bug worth reporting.
 
 ## Recognition
 
-We appreciate responsible disclosure and will credit reporters in our changelog (unless anonymity is preferred).
+Reporters are credited in the release notes unless they would rather stay anonymous.
