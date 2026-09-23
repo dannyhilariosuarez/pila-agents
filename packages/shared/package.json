@@ -28,12 +28,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dannyhilariosuarez/pila",
+    "url": "git+https://github.com/dannyhilariosuarez/pila-agents.git",
     "directory": "packages/shared"
   },
-  "homepage": "https://github.com/dannyhilariosuarez/pila/tree/main/packages/shared",
+  "homepage": "https://github.com/dannyhilariosuarez/pila-agents/tree/main/packages/shared",
   "bugs": {
-    "url": "https://github.com/dannyhilariosuarez/pila/issues"
+    "url": "https://github.com/dannyhilariosuarez/pila-agents/issues"
   },
   "publishConfig": {
     "access": "public"

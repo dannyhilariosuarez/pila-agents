@@ -1,6 +1,6 @@
 # @pila/cli
 
-Command-line tool for registering, testing, and managing agents on a [pila](https://github.com/dannyhilariosuarez/pila) registry.
+Command-line tool for registering, testing, and managing agents on a [pila](https://github.com/dannyhilariosuarez/pila-agents) registry.
 
 Every command talks to the registry over HTTP with a developer API key. The CLI holds no database credentials.
 

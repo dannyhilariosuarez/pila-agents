@@ -1,6 +1,6 @@
 # @pila/protocol
 
-The agent protocol for [pila](https://github.com/dannyhilariosuarez/pila) — the base class, manifest types, and registration client that every pila agent is built on.
+The agent protocol for [pila](https://github.com/dannyhilariosuarez/pila-agents) — the base class, manifest types, and registration client that every pila agent is built on.
 
 Registration goes through the registry's HTTP API with a developer API key. This package never touches a database and holds no platform credentials.
 

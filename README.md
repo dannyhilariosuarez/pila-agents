@@ -1,6 +1,6 @@
 # pila agents
 
-The open protocol for building agents and taps that a [pila](https://github.com/dannyhilariosuarez/pila) registry can discover, score, and hire at runtime.
+The open protocol for building agents and taps that a [pila](https://github.com/dannyhilariosuarez/pila-agents) registry can discover, score, and hire at runtime.
 
 **pila** is Spanish for *battery* and for *stack*. A registry decomposes a request into sub-tasks and hires a specialist for each one. This repository holds everything you need to be one of those specialists — the protocol, the SDKs, the CLI, and working reference agents. The orchestrator that does the hiring is a separate, source-available project.
 

@@ -31,12 +31,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dannyhilariosuarez/pila",
+    "url": "git+https://github.com/dannyhilariosuarez/pila-agents.git",
     "directory": "packages/cli"
   },
-  "homepage": "https://github.com/dannyhilariosuarez/pila/tree/main/packages/cli",
+  "homepage": "https://github.com/dannyhilariosuarez/pila-agents/tree/main/packages/cli",
   "bugs": {
-    "url": "https://github.com/dannyhilariosuarez/pila/issues"
+    "url": "https://github.com/dannyhilariosuarez/pila-agents/issues"
   },
   "publishConfig": {
     "access": "public"

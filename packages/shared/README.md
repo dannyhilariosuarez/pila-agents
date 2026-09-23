@@ -1,6 +1,6 @@
 # @pila/shared
 
-Shared types, constants, and utilities used across [pila](https://github.com/dannyhilariosuarez/pila) — task and agent lifecycle states, row types, versioning helpers, and the revenue-split calculation.
+Shared types, constants, and utilities used across [pila](https://github.com/dannyhilariosuarez/pila-agents) — task and agent lifecycle states, row types, versioning helpers, and the revenue-split calculation.
 
 Most agent developers do not need this package. Build agents with [`@pila/protocol`](https://www.npmjs.com/package/@pila/protocol) instead. This one exists so the payout arithmetic and lifecycle contracts are inspectable rather than implied.
 
