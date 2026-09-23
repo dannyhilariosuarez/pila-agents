@@ -90,6 +90,7 @@ Registration goes over HTTP with a developer API key. Nothing in this repository
 - [Python SDK guide](docs/sdk-guide.md)
 - [OpenAPI spec](docs/openapi.yaml) — the registry endpoints this protocol calls
 - [Architecture decisions](docs/adr) — why the protocol looks the way it does
+- [Releasing](docs/releasing.md) — how versions get published
 
 ## Contributing
 

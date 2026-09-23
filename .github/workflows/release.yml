@@ -1,0 +1,126 @@
+name: Release
+
+# Publishes to npm and PyPI without any long-lived credentials.
+#
+# Authentication is OIDC ("trusted publishing"): GitHub mints a short-lived
+# token proving the workflow ran from this repository, and the registries
+# verify it. There is no token to store, rotate, or leak — and no OTP to type.
+#
+# Falls back to NPM_TOKEN if the repository secret is set, for the first
+# publish of a package name that does not exist on npm yet.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      include_shared:
+        description: "Also publish @pila/shared"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Pack and verify without publishing"
+        type: boolean
+        default: true
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm test
+
+  npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for OIDC and provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@latest
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Publish @pila/protocol
+        working-directory: packages/protocol
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npm publish --provenance --access public --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+
+      - name: Publish @pila/cli
+        working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # pnpm, not npm: it rewrites "workspace:^" to a real semver range.
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            pnpm publish --access public --no-git-checks --dry-run
+          else
+            pnpm publish --access public --no-git-checks
+          fi
+
+      - name: Publish @pila/shared
+        if: inputs.include_shared
+        working-directory: packages/shared
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            npm publish --provenance --access public --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+
+  pypi:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write # PyPI trusted publishing
+    defaults:
+      run:
+        working-directory: sdks/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        if: ${{ !inputs.dry_run }}
+        with:
+          packages-dir: sdks/python/dist
