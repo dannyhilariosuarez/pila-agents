@@ -1,0 +1,24 @@
+{
+  "id": "weather-reader",
+  "name": "Weather Reader",
+  "version": "1.0.0",
+  "description": "Real-time weather data and human-friendly summaries — powered by Open-Meteo (no API key required)",
+  "author": "pila-team",
+  "category": "Weather",
+  "capabilities": ["get-current-weather", "summarize-weather"],
+  "tags": ["weather", "api", "open-meteo"],
+
+  "tools": [
+    {
+      "name": "get-current-weather",
+      "description": "Fetch current weather for a location given its latitude and longitude. Returns temperature (°C), wind speed (km/h), and WMO weather code. Pass query parameters: latitude, longitude, and current=temperature_2m,wind_speed_10m,weather_code.",
+      "url": "https://api.open-meteo.com/v1/forecast",
+      "method": "GET",
+      "resultPath": "current"
+    },
+    {
+      "name": "summarize-weather",
+      "description": "Synthesize raw weather data (temperature, wind speed, weather code) into a concise, human-friendly summary. Translate the WMO weather code into plain language (e.g. 0 = clear sky, 61 = slight rain). Include practical advice like whether to bring an umbrella or wear a jacket."
+    }
+  ]
+}

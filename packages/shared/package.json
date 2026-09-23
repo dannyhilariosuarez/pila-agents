@@ -1,0 +1,53 @@
+{
+  "name": "@pila/shared",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "description": "Shared types, constants, and billing utilities for pila",
+  "keywords": [
+    "pila",
+    "agents",
+    "types",
+    "constants"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "tsc --build --force"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dannyhilariosuarez/pila",
+    "directory": "packages/shared"
+  },
+  "homepage": "https://github.com/dannyhilariosuarez/pila/tree/main/packages/shared",
+  "bugs": {
+    "url": "https://github.com/dannyhilariosuarez/pila/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.tsbuildinfo",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false
+}

@@ -1,0 +1,656 @@
+openapi: 3.1.0
+info:
+  title: Pila Orchestrator API
+  version: 0.0.1
+  description: Autonomous agent registry and task orchestration API
+  license:
+    name: UNLICENSED
+  contact:
+    name: Pila AI
+    url: https://pila.ai
+
+servers:
+  - url: http://localhost:3000
+    description: Development
+  - url: https://api.pila.ai
+    description: Production
+
+paths:
+  /:
+    get:
+      summary: Root endpoint
+      operationId: getRoot
+      responses:
+        "200":
+          description: Service identity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: pila-orchestrator
+                  status:
+                    type: string
+                    example: ok
+
+  /health:
+    get:
+      summary: Health check with dependency status
+      operationId: getHealth
+      responses:
+        "200":
+          description: All systems healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Degraded state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /registry:
+    get:
+      summary: List active agents
+      operationId: getRegistry
+      responses:
+        "200":
+          description: Agent registry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalAgents:
+                    type: integer
+                  executorsLoaded:
+                    type: integer
+                  lastRefresh:
+                    type: string
+                    format: date-time
+                  agents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgentSummary"
+
+  /tasks:
+    post:
+      summary: Create and execute a task
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskRequest"
+      responses:
+        "201":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateTaskResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "429":
+          description: Rate limited
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /tasks/{id}:
+    get:
+      summary: Get task with agent statuses
+      operationId: getTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskDetail"
+        "404":
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /tasks/{id}/stream:
+    get:
+      summary: SSE stream for real-time task progress
+      operationId: streamTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /tasks/{id}/feedback:
+    post:
+      summary: Submit feedback for a task's agent result
+      operationId: createTaskFeedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vote, agentId, userId]
+              properties:
+                vote:
+                  type: string
+                  enum: [up, down]
+                agentId:
+                  type: string
+                userId:
+                  type: string
+      responses:
+        "200":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  newScore:
+                    type: number
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /feedback:
+    post:
+      summary: Submit task or agent feedback
+      operationId: createFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedbackRequest"
+      responses:
+        "200":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /feedback/{taskId}:
+    get:
+      summary: Get feedback for a task
+      operationId: getTaskFeedback
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task feedback
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  feedback:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FeedbackEntry"
+
+  /developers/register:
+    post:
+      summary: Register a new agent via HTTP
+      operationId: registerAgent
+      description: |
+        Requires a developer API key in the X-API-Key header. Requests without
+        a valid key are rejected with 401 before the manifest is read.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterAgentRequest"
+      responses:
+        "201":
+          description: Agent registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  agentId:
+                    type: string
+                  name:
+                    type: string
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Agent already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /developers/registry:
+    get:
+      summary: List registered agents for developer tooling
+      operationId: listRegistryAgents
+      security:
+        - ApiKeyAuth: []
+      responses:
+        "200":
+          description: Registered agents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        manifestId:
+                          type: string
+                          nullable: true
+                        name:
+                          type: string
+                        category:
+                          type: string
+                        description:
+                          type: string
+                        version:
+                          type: string
+                          nullable: true
+                        pricePerTask:
+                          type: number
+                        isActive:
+                          type: boolean
+                        source:
+                          type: string
+                        hasRealExecutor:
+                          type: boolean
+                        registeredAt:
+                          type: string
+                  total:
+                    type: integer
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /developers/registry/{slug}:
+    get:
+      summary: Resolve one agent by manifest ID, name, or UUID
+      operationId: getRegistryAgent
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent detail with an earnings summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  earnings:
+                    type: object
+                    properties:
+                      totalCents:
+                        type: integer
+                      paidExecutions:
+                        type: integer
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Deactivate an agent
+      operationId: deactivateRegistryAgent
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  agentId:
+                    type: string
+                  name:
+                    type: string
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /developers/{id}/agents:
+    get:
+      summary: List agents for a developer
+      operationId: getDeveloperAgents
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Developer's agents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AgentSummary"
+        "404":
+          description: Developer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Developer API key. Set PILA_API_KEY in your environment.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Validation failed
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              path:
+                type: array
+                items:
+                  type: string
+              message:
+                type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded]
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+            agentRegistry:
+              type: string
+        uptime:
+          type: integer
+        version:
+          type: string
+
+    AgentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        source:
+          type: string
+        hasRealExecutor:
+          type: boolean
+        registeredAt:
+          type: string
+          format: date-time
+
+    CreateTaskRequest:
+      type: object
+      required: [task, userId]
+      properties:
+        task:
+          type: string
+          minLength: 1
+        userId:
+          type: string
+        slackThreadTs:
+          type: string
+        slackChannelId:
+          type: string
+
+    CreateTaskResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        webUrl:
+          type: string
+          format: uri
+        status:
+          type: string
+          example: processing
+
+    TaskDetail:
+      type: object
+      properties:
+        task:
+          type: object
+          properties:
+            id:
+              type: string
+            user_id:
+              type: string
+            input:
+              type: string
+            status:
+              type: string
+            result:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+            agents:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  agentId:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                  status:
+                    type: string
+                  output:
+                    type: string
+                  startedAt:
+                    type: string
+                    format: date-time
+                  completedAt:
+                    type: string
+                    format: date-time
+
+    CreateFeedbackRequest:
+      type: object
+      required: [taskId, agentId, rating, sessionId]
+      properties:
+        taskId:
+          type: string
+        agentId:
+          type: string
+          nullable: true
+        rating:
+          type: integer
+          enum: [1, -1]
+        sessionId:
+          type: string
+
+    FeedbackEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        taskId:
+          type: string
+        agentId:
+          type: string
+        rating:
+          type: integer
+        sessionId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    RegisterAgentRequest:
+      type: object
+      required: [manifest]
+      properties:
+        manifest:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            version:
+              type: string
+              default: "1.0.0"
+            description:
+              type: string
+            author:
+              type: string
+            capabilities:
+              type: array
+              items:
+                type: string
+            tags:
+              type: array
+              items:
+                type: string
+        endpoint:
+          type: string
+          format: uri
+          nullable: true
+        category:
+          type: string
+          default: general

@@ -1,0 +1,29 @@
+{
+  "id": "finance-toolkit",
+  "name": "Finance Toolkit",
+  "version": "1.0.0",
+  "description": "Financial analysis tools — live stock data and calculations",
+  "author": "your-name",
+  "category": "Finance",
+  "capabilities": ["stock-lookup", "percentage-change", "compound-interest"],
+  "tags": ["finance", "stocks", "math"],
+
+  "tools": [
+    {
+      "name": "get-stock-price",
+      "description": "Fetch the current stock price for a given ticker symbol",
+      "url": "https://finnhub.io/api/v1/quote",
+      "method": "GET",
+      "headers": { "X-Finnhub-Token": "your-api-key" },
+      "resultPath": "c"
+    },
+    {
+      "name": "calculate-percentage-change",
+      "description": "Calculate the percentage change between two values. Accepts 'from' and 'to' as parameters."
+    },
+    {
+      "name": "calculate-compound-interest",
+      "description": "Calculate compound interest. Accepts principal, annual rate (as decimal), compounding frequency per year, and number of years."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.turbo
+coverage/
+*.log
+*.tsbuildinfo
+
+# secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+.venv/
+*.egg-info/
+build/

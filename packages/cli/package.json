@@ -1,0 +1,55 @@
+{
+  "name": "@pila/cli",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "description": "CLI for registering, testing, and managing pila agents",
+  "keywords": [
+    "pila",
+    "cli",
+    "agents",
+    "agent-registry",
+    "ai"
+  ],
+  "type": "module",
+  "bin": {
+    "pila": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "tsc --build --force"
+  },
+  "dependencies": {
+    "@pila/protocol": "workspace:^",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dannyhilariosuarez/pila",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/dannyhilariosuarez/pila/tree/main/packages/cli",
+  "bugs": {
+    "url": "https://github.com/dannyhilariosuarez/pila/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.tsbuildinfo",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}
